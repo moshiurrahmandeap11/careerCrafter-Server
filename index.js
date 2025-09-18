@@ -4,7 +4,6 @@ const cors = require('cors');
 const connectDB = require('./db/mongodb');
 const userRoutes = require('./routes/userRoutes');
 const { port } = require('./config/config');
-
 const app = express();
 
 // Middleware
