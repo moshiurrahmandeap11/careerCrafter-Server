@@ -34,33 +34,36 @@ router.post('/users', async (req, res) => {
 });
 
 // UPDATE a user's sources (PUT)
-router.put('/users/:id', async (req, res) => {
-    try {
-        const client = await connectDB();
-        const db = client.db(dbName);
-        const usersCollection = db.collection('users');
-        const userId = req.params.id;
-        const { sources } = req.body;
+router.put('/users/:email', async (req, res) => {
+  try {
+    const client = await connectDB();
+    const db = client.db(dbName);
+    const usersCollection = db.collection('users');
+    const userEmail = req.params.email;
 
-        if (!sources || !Array.isArray(sources)) {
-            return res.status(400).json({ error: 'Sources must be an array' });
-        }
+    const updates = req.body;
 
-        const result = await usersCollection.updateOne(
-            { _id: new require('mongodb').ObjectId(userId) },
-            { $set: { sources } }
-        );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.status(200).json({ message: 'User sources updated', data: result });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No update fields provided' });
     }
+
+    const result = await usersCollection.updateOne(
+      { email: userEmail },
+      { $set: updates }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json({ message: 'User updated', data: result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
+
+
 
 // PARTIALLY UPDATE a user (PATCH)
 router.patch('/users/:id', async (req, res) => {
@@ -108,6 +111,26 @@ router.delete('/users/:id', async (req, res) => {
         }
 
         res.status(200).json({ message: 'User deleted' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+router.get('/users/email/:email', async (req, res) => {
+    try {
+        const client = await connectDB();
+        const db = client.db(dbName);
+        const usersCollection = db.collection('users');
+        const email = req.params.email;
+
+        const user = await usersCollection.findOne({ email: email });
+        
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.status(200).json(user);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
