@@ -17,6 +17,26 @@ router.get('/users', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+router.get('/allUsers', async (req, res) => {
+    try {
+      const client = await connectDB();
+      const db = client.db(dbName);
+      const usersCollection = db.collection('users');
+  
+      // assuming you pass the current user's email in query: /users?email=me@example.com
+      const currentUserEmail = req.query.email;
+  
+      const users = await usersCollection.find({
+        email: { $ne: currentUserEmail }
+      }).toArray();
+  
+      res.status(200).json(users);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+  
 
 // CREATE a new user
 router.post('/users', async (req, res) => {
