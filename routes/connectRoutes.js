@@ -2,7 +2,7 @@
 const express = require("express");
 const connectDB = require("../db/mongodb");
 const { dbName } = require("../config/config");
-
+const { ObjectId } = require("mongodb");
 const router = express.Router();
 
 // --- 1. Send a connection request ---
@@ -72,6 +72,8 @@ router.get("/invitations", async (req, res) => {
             id: "$_id",
             user: {
               email: "$user.email",
+              tags: "$user.tags",
+              profile: "$user.profilePicture",
               name: "$user.name",
               jobTitle: "$user.jobTitle",
             },
@@ -103,7 +105,7 @@ router.post("/invitation/:invitationId", async (req, res) => {
     const newStatus = accept ? "accepted" : "ignored";
 
     const result = await connectionsCollection.updateOne(
-      { _id: new require("mongodb").ObjectId(invitationId), recipientEmail },
+      { _id: new ObjectId(invitationId), recipientEmail },
       { $set: { status: newStatus, updatedAt: new Date() } }
     );
 
