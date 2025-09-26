@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import connectDB from "./db/mongodb.js";
 import userRoutes from "./routes/userRoutes.js";
+import connectRoutes from "./routes/connectRoutes.js"; 
 import config from "./config/config.js";
 import { Server } from "socket.io";
 import { createServer } from "http";
@@ -14,7 +15,7 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "*",
     credentials: true,
   })
 );
@@ -26,7 +27,7 @@ const server = createServer(app);
 // Create Socket.IO server
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -37,6 +38,7 @@ const onlineUsers = new Map();
 
 // --- MongoDB setup ---
 let messagesCollection;
+
 
 connectDB().then((client) => {
   const db = client.db(dbName);
@@ -77,6 +79,7 @@ io.on("connection", (socket) => {
 
 // Prefix all routes with /v1
 app.use("/v1", userRoutes);
+app.use("/v1/connect", connectRoutes);
 
 app.get("/", (req, res) => res.send("Hello Syntax Six Warriors"));
 
