@@ -23,8 +23,8 @@ router.post("/", async (req, res) => {
     const existingConnection = await connectionsCollection.findOne({
       $or: [
         { requesterEmail, recipientEmail: targetEmail },
-        { requesterEmail: targetEmail, recipientEmail: requesterEmail }
-      ]
+        { requesterEmail: targetEmail, recipientEmail: requesterEmail },
+      ],
     });
 
     if (existingConnection)
@@ -34,7 +34,7 @@ router.post("/", async (req, res) => {
       requesterEmail,
       recipientEmail: targetEmail,
       status: "pending",
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     res.status(201).json({ message: "Connection request sent." });
@@ -55,24 +55,30 @@ router.get("/invitations", async (req, res) => {
     const connectionsCollection = db.collection("connections");
     const usersCollection = db.collection("users");
 
-    const invitations = await connectionsCollection.aggregate([
-      { $match: { recipientEmail: email, status: "pending" } },
-      {
-        $lookup: {
-          from: "users",
-          localField: "requesterEmail",
-          foreignField: "email",
-          as: "user"
-        }
-      },
-      { $unwind: "$user" },
-      {
-        $project: {
-          id: "$_id",
-          user: { email: "$user.email", name: "$user.name", jobTitle: "$user.jobTitle" }
-        }
-      }
-    ]).toArray();
+    const invitations = await connectionsCollection
+      .aggregate([
+        { $match: { recipientEmail: email, status: "pending" } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "requesterEmail",
+            foreignField: "email",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $project: {
+            id: "$_id",
+            user: {
+              email: "$user.email",
+              name: "$user.name",
+              jobTitle: "$user.jobTitle",
+            },
+          },
+        },
+      ])
+      .toArray();
 
     res.status(200).json({ invitations });
   } catch (err) {
@@ -102,7 +108,9 @@ router.post("/invitation/:invitationId", async (req, res) => {
     );
 
     if (result.matchedCount === 0)
-      return res.status(404).json({ error: "Invitation not found or invalid recipient." });
+      return res
+        .status(404)
+        .json({ error: "Invitation not found or invalid recipient." });
 
     res.status(200).json({ message: `Invitation ${newStatus}.` });
   } catch (err) {
@@ -122,26 +130,38 @@ router.get("/suggested", async (req, res) => {
     const connectionsCollection = db.collection("connections");
     const usersCollection = db.collection("users");
 
-    const existingConnections = await connectionsCollection.find({
-      $or: [{ requesterEmail: email }, { recipientEmail: email }]
-    }).toArray();
+    const existingConnections = await connectionsCollection
+      .find({
+        $or: [{ requesterEmail: email }, { recipientEmail: email }],
+      })
+      .toArray();
 
-    const connectedEmails = existingConnections.map(conn =>
+    const connectedEmails = existingConnections.map((conn) =>
       conn.requesterEmail === email ? conn.recipientEmail : conn.requesterEmail
     );
 
     const allEmailsToExclude = [email, ...connectedEmails];
 
-    const suggestedUsers = await usersCollection.find({
-      email: { $nin: allEmailsToExclude }
-    }).toArray();
+    const suggestedUsers = await usersCollection
+      .find({
+        email: { $nin: allEmailsToExclude },
+      })
+      .toArray();
 
-    const formattedUsers = suggestedUsers.map(u => ({
+    const formattedUsers = suggestedUsers.map((u) => ({
+      id: u._id,
       email: u.email,
       name: u.name,
-      jobTitle: u.jobTitle || ""
+      profilePicture:
+        u.profilePicture ||
+        "https://plus.unsplash.com/premium_photo-1689568126014-06fea9d5d341?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8cHJvZmlsZXxlbnwwfHwwfHx8MA%3D%3D",
+      tags: u.tags || [
+        "MERN Stack Developer",
+        "Full Stack Developer",
+        "Frontend Developer",
+        "Backend Developer",
+      ],
     }));
-
     res.status(200).json({ users: formattedUsers });
   } catch (err) {
     console.error(err);
@@ -160,30 +180,43 @@ router.get("/my-connections", async (req, res) => {
     const connectionsCollection = db.collection("connections");
     const usersCollection = db.collection("users");
 
-    const connections = await connectionsCollection.aggregate([
-      { $match: { status: "accepted", $or: [{ requesterEmail: email }, { recipientEmail: email }] } },
-      {
-        $addFields: {
-          friendEmail: {
-            $cond: {
-              if: { $eq: ["$requesterEmail", email] },
-              then: "$recipientEmail",
-              else: "$requesterEmail"
-            }
-          }
-        }
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "friendEmail",
-          foreignField: "email",
-          as: "friend"
-        }
-      },
-      { $unwind: "$friend" },
-      { $project: { email: "$friend.email", name: "$friend.name", jobTitle: "$friend.jobTitle" } }
-    ]).toArray();
+    const connections = await connectionsCollection
+      .aggregate([
+        {
+          $match: {
+            status: "accepted",
+            $or: [{ requesterEmail: email }, { recipientEmail: email }],
+          },
+        },
+        {
+          $addFields: {
+            friendEmail: {
+              $cond: {
+                if: { $eq: ["$requesterEmail", email] },
+                then: "$recipientEmail",
+                else: "$requesterEmail",
+              },
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "friendEmail",
+            foreignField: "email",
+            as: "friend",
+          },
+        },
+        { $unwind: "$friend" },
+        {
+          $project: {
+            email: "$friend.email",
+            name: "$friend.name",
+            jobTitle: "$friend.jobTitle",
+          },
+        },
+      ])
+      .toArray();
 
     res.status(200).json({ connections });
   } catch (err) {
